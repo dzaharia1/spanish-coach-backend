@@ -38,10 +38,22 @@ app.get('/', (req, res) => {
   res.send('Hello World');
 });
 
-// Routes
+// Add a more explicit error handler for wrong methods
+app.all('/translate', (req, res, next) => {
+  if (req.method !== 'POST' && req.method !== 'OPTIONS') {
+    return res.status(405).json({ error: `Method ${req.method} not allowed. Only POST requests are accepted.` });
+  }
+  next();
+});
+
 app.post('/translate', async (req, res) => {
+  console.log('Received POST request to /translate');
+  console.log('Request body:', req.body);
+  console.log('Request method:', req.method);
+
   // Add OPTIONS handling for preflight requests
   if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'POST');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).json({});
@@ -91,6 +103,12 @@ app.post('/translate', async (req, res) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(port, () => {
