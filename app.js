@@ -11,7 +11,12 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // In production, you should specify your frontend domain
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Initialize Gemini AI
@@ -35,6 +40,13 @@ app.get('/', (req, res) => {
 
 // Routes
 app.post('/translate', async (req, res) => {
+  // Add OPTIONS handling for preflight requests
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'POST');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).json({});
+  }
+
   const { text } = req.body;
   
   if (!text) {
