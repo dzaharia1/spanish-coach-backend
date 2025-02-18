@@ -34,7 +34,7 @@ app.get('/', (req, res) => {
 });
 
 // Routes
-app.get('/translate', async (req, res) => {
+app.post('/translate', async (req, res) => {
   const { text } = req.body;
   
   if (!text) {
