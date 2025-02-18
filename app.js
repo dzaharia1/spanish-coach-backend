@@ -29,6 +29,10 @@ const generationConfig = {
   maxOutputTokens: 8192,
 };
 
+app.get('/', (req, res) => {
+  res.send('Hello World');
+});
+
 // Routes
 app.post('/translate', async (req, res) => {
   const { text } = req.body;
