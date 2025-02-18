@@ -38,77 +38,69 @@ app.get('/', (req, res) => {
   res.send('Hello World');
 });
 
-// Add a more explicit error handler for wrong methods
-app.all('/translate', (req, res, next) => {
-  if (req.method !== 'POST' && req.method !== 'OPTIONS') {
-    return res.status(405).json({ error: `Method ${req.method} not allowed. Only POST requests are accepted.` });
-  }
-  next();
-});
+// Remove the app.all middleware and modify the translate route
+app.route('/translate')
+  .get((req, res) => {
+    console.log('GET request received when POST expected');
+    res.status(405).json({ error: 'Method not allowed. Please use POST.' });
+  })
+  .post(async (req, res) => {
+    console.log('Received POST request to /translate');
+    console.log('Request body:', req.body);
+    console.log('Request method:', req.method);
+    console.log('Request headers:', req.headers);
 
-app.post('/translate', async (req, res) => {
-  console.log('Received POST request to /translate');
-  console.log('Request body:', req.body);
-  console.log('Request method:', req.method);
-
-  // Add OPTIONS handling for preflight requests
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'POST');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).json({});
-  }
-
-  const { text } = req.body;
-  
-  if (!text) {
-    return res.status(400).json({ error: 'Text is required' });
-  }
-
-  try {
-    // Set up SSE
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    const chat = model.startChat({
-      generationConfig,
-      history: [
-        {
-          role: "user",
-          parts: [{ text: systemInstruction }]
-        }
-      ]
-    });
-    
-    const result = await chat.sendMessageStream(`"${text}"`);
-    
-    // Stream each chunk as it arrives
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text();
-      if (chunkText) {
-        res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
-      }
+    // Add OPTIONS handling for preflight requests
+    if (req.method === 'OPTIONS') {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'POST');
+      res.header('Access-Control-Allow-Headers', 'Content-Type');
+      return res.status(200).json({});
     }
+
+    const { text } = req.body;
     
-    res.end();
-  } catch (error) {
-    console.error('Error:', error);
-    // If an error occurs after SSE headers are set, send it as an event
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-    res.end();
-  }
-});
+    if (!text) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+
+    try {
+      // Set up SSE
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      const chat = model.startChat({
+        generationConfig,
+        history: [
+          {
+            role: "user",
+            parts: [{ text: systemInstruction }]
+          }
+        ]
+      });
+      
+      const result = await chat.sendMessageStream(`"${text}"`);
+      
+      // Stream each chunk as it arrives
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        if (chunkText) {
+          res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+        }
+      }
+      
+      res.end();
+    } catch (error) {
+      console.error('Error:', error);
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
+  });
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
-});
-
-// Add error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(port, () => {
