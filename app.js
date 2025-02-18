@@ -12,7 +12,7 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: '*', // In production, you should specify your frontend domain
+  origin: process.env.FRONTEND_DOMAIN, // In production, you should specify your frontend domain
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
   credentials: true
