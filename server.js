@@ -1,5 +1,6 @@
 require('dotenv').config();
 const systemInstructions = require('./systeminstructions');
+const port = require('./setup-log.json')['port'];
 
 const express = require('express');
 const cors = require('cors');
@@ -10,7 +11,6 @@ const {
 } = require("@google/generative-ai");
 
 const app = express();
-const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
@@ -27,7 +27,7 @@ const genAI = new GoogleGenerativeAI(apiKey);
 const systemInstruction = systemInstructions;
 
 
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro", systemInstruction: systemInstruction });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: systemInstruction });
 
 const generationConfig = { 
   temperature: 1,

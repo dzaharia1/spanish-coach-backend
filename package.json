@@ -2,9 +2,9 @@
   "name": "spanish-coach-backend",
   "version": "1.0.0",
   "description": "Backend for Spanish language learning app using Gemini API",
-  "main": "app.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node app.js",
+    "start": "node server.js",
     "dev": "nodemon app.js"
   },
   "dependencies": {
