@@ -6,8 +6,6 @@ const express = require('express');
 const cors = require('cors');
 const {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } = require("@google/generative-ai");
 
 const app = express();
