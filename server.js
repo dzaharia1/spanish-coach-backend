@@ -12,7 +12,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_DOMAIN,
+  origin: process.env.FRONTEND_DOMAINS,
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
   credentials: true
@@ -25,7 +25,8 @@ const genAI = new GoogleGenerativeAI(apiKey);
 const systemInstruction = systemInstructions;
 
 
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: systemInstruction });
+const spanishCoach = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: systemInstruction.spanishLearner });
+const englishCoach = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: systemInstruction.englishLearner });
 
 const generationConfig = { 
   temperature: 1,
@@ -39,7 +40,7 @@ app.get('/', (req, res) => {
 });
 
 // Remove the app.all middleware and modify the translate route
-app.route('/translate')
+app.route('/spanishHelp')
   .get((req, res) => {
     console.log('GET request received when POST expected');
     res.status(405).json({ error: 'Method not allowed. Please use POST.' });
@@ -70,12 +71,12 @@ app.route('/translate')
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      const chat = model.startChat({
+      const chat = spanishCoach.startChat({
         generationConfig,
         history: [
           {
             role: "user",
-            parts: [{ text: systemInstruction }]
+            parts: [{ text: systemInstruction.spanishLearner }]
           }
         ]
       });
@@ -83,6 +84,62 @@ app.route('/translate')
       const result = await chat.sendMessageStream(`"${text}"`);
       
       // Stream each chunk as it arrives
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        if (chunkText) {
+          res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+        }
+      }
+      
+      res.end();
+    } catch (error) {
+      console.error('Error:', error);
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
+  });
+
+app.route('/englishHelp')
+  .get((req, res) => {
+    console.log('GET request received when POST expected');
+    res.status(405).json({ error: 'Method not allowed. Please use POST.' });
+  })
+  .post(async (req, res) => {
+    console.log('Received POST request to /englishHelp');
+    console.log('Request body:', req.body);
+    console.log('Request method:', req.method);
+    console.log('Request headers:', req.headers);
+
+    if (req.method === 'OPTIONS') {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'POST');
+      res.header('Access-Control-Allow-Headers', 'Content-Type');
+      return res.status(200).json({});
+    }
+
+    const { text } = req.body;
+    
+    if (!text) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+
+    try {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      const chat = englishCoach.startChat({
+        generationConfig,
+        history: [
+          {
+            role: "user",
+            parts: [{ text: systemInstruction.englishLearner }]
+          }
+        ]
+      });
+      
+      const result = await chat.sendMessageStream(`"${text}"`);
+      
       for await (const chunk of result.stream) {
         const chunkText = chunk.text();
         if (chunkText) {

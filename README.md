@@ -34,13 +34,13 @@ npm start
 
 ## API Endpoints
 
-### POST /translate
+### POST /spanishHelp
 Translates text between English and Spanish with detailed context and explanations.
 
 Request body:
 ```json
 {
-  "text": "Your text to translate"
+  "text": "Your English or Spanish text to translate"
 }
 ```
 
