@@ -44,6 +44,16 @@ Request body:
 }
 ```
 
+### POST /englishHelp
+Provides assistance for Spanish speakers learning English.
+
+Request body:
+```json
+{
+  "text": "Your Spanish or English text for assistance"
+}
+```
+
 The response is streamed using Server-Sent Events (SSE).
 
 ### GET /health
