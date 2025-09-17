@@ -12,7 +12,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_DOMAINS,
+  origin: process.env.FRONTEND_DOMAINS ? process.env.FRONTEND_DOMAINS.split(',') : false,
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
   credentials: true
