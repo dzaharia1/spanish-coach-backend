@@ -4,9 +4,7 @@ const port = require('./setup-log.json')['port'];
 
 const express = require('express');
 const cors = require('cors');
-const {
-  GoogleGenerativeAI,
-} = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 
@@ -21,14 +19,12 @@ app.use(express.json());
 
 // Initialize Gemini AI
 const apiKey = process.env.GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey);
+const ai = new GoogleGenAI({ apiKey });
 const systemInstruction = systemInstructions;
 
+const MODEL = "gemini-3-flash-preview";
 
-const spanishCoach = genAI.getGenerativeModel({ model: "gemini-3.0-flash", systemInstruction: systemInstruction.spanishLearner });
-const englishCoach = genAI.getGenerativeModel({ model: "gemini-3.0-flash", systemInstruction: systemInstruction.englishLearner });
-
-const generationConfig = { 
+const generationConfig = {
   temperature: 1,
   topP: 0.95,
   topK: 40,
@@ -60,7 +56,7 @@ app.route('/spanishHelp')
     }
 
     const { text } = req.body;
-    
+
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
     }
@@ -71,8 +67,12 @@ app.route('/spanishHelp')
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      const chat = spanishCoach.startChat({
-        generationConfig,
+      const chat = ai.chats.create({
+        model: MODEL,
+        config: {
+          systemInstruction: systemInstruction.spanishLearner,
+          ...generationConfig,
+        },
         history: [
           {
             role: "user",
@@ -80,17 +80,17 @@ app.route('/spanishHelp')
           }
         ]
       });
-      
-      const result = await chat.sendMessageStream(`"${text}"`);
-      
+
+      const response = await chat.sendMessageStream({ message: `"${text}"` });
+
       // Stream each chunk as it arrives
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
+      for await (const chunk of response) {
+        const chunkText = chunk.text;
         if (chunkText) {
           res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
         }
       }
-      
+
       res.end();
     } catch (error) {
       console.error('Error:', error);
@@ -118,7 +118,7 @@ app.route('/englishHelp')
     }
 
     const { text } = req.body;
-    
+
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
     }
@@ -128,8 +128,12 @@ app.route('/englishHelp')
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      const chat = englishCoach.startChat({
-        generationConfig,
+      const chat = ai.chats.create({
+        model: MODEL,
+        config: {
+          systemInstruction: systemInstruction.englishLearner,
+          ...generationConfig,
+        },
         history: [
           {
             role: "user",
@@ -137,16 +141,16 @@ app.route('/englishHelp')
           }
         ]
       });
-      
-      const result = await chat.sendMessageStream(`"${text}"`);
-      
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
+
+      const response = await chat.sendMessageStream({ message: `"${text}"` });
+
+      for await (const chunk of response) {
+        const chunkText = chunk.text;
         if (chunkText) {
           res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
         }
       }
-      
+
       res.end();
     } catch (error) {
       console.error('Error:', error);
