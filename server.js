@@ -25,8 +25,8 @@ const genAI = new GoogleGenerativeAI(apiKey);
 const systemInstruction = systemInstructions;
 
 
-const spanishCoach = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: systemInstruction.spanishLearner });
-const englishCoach = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: systemInstruction.englishLearner });
+const spanishCoach = genAI.getGenerativeModel({ model: "gemini-3-flash-preview", systemInstruction: systemInstruction.spanishLearner });
+const englishCoach = genAI.getGenerativeModel({ model: "gemini-3-flash-preview", systemInstruction: systemInstruction.englishLearner });
 
 const generationConfig = { 
   temperature: 1,
