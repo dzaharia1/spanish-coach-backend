@@ -31,7 +31,7 @@ const generationConfig = {
   maxOutputTokens: 8192,
   responseMimeType: "text/plain",
   thinkingConfig: {
-    thinkingBudget: 0,
+    thinkingBudget: 500,
   },
 };
 
