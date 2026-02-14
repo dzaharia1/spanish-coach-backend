@@ -29,6 +29,10 @@ const generationConfig = {
   topP: 0.95,
   topK: 40,
   maxOutputTokens: 8192,
+  responseMimeType: "text/plain",
+  thinkingConfig: {
+    thinkingBudget: 2422,
+  },
 };
 
 app.get('/', (req, res) => {
