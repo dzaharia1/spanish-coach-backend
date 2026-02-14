@@ -1,5 +1,5 @@
 require('dotenv').config();
-const systemInstructions = require('./systeminstructions');
+const { completeInstructions, conciseInstructions } = require('./systeminstructions');
 const port = require('./setup-log.json')['port'];
 
 const express = require('express');
@@ -20,19 +20,37 @@ app.use(express.json());
 // Initialize Gemini AI
 const apiKey = process.env.GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey });
-const systemInstruction = systemInstructions;
 
-const MODEL = "gemini-3-flash-preview";
-
-const generationConfig = {
-  temperature: 1,
-  topP: 0.95,
-  topK: 40,
-  maxOutputTokens: 8192,
-  responseMimeType: "text/plain",
-  thinkingConfig: {
-    thinkingBudget: 500,
-  },
+const getModelConfig = (modelType) => {
+  if (modelType === 'concise') {
+    return {
+      model: "gemini-flash-latest",
+      systemInstruction: conciseInstructions,
+      generationConfig: {
+        temperature: 1,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 8192,
+        responseMimeType: "text/plain",
+      }
+    };
+  }
+  // Default to complete
+  return {
+    model: "gemini-3-pro-preview",
+    systemInstruction: completeInstructions,
+    generationConfig: {
+      temperature: 1,
+      topP: 0.95,
+      topK: 40,
+      maxOutputTokens: 8192,
+      responseMimeType: "text/plain",
+      thinkingConfig: {
+        thinkingBudget: 2048,
+      },
+      responseModalities: ["TEXT"], // Ensure text output
+    }
+  };
 };
 
 app.get('/', (req, res) => {
@@ -59,7 +77,7 @@ app.route('/spanishHelp')
       return res.status(200).json({});
     }
 
-    const { text } = req.body;
+    const { text, model = 'complete' } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
@@ -71,16 +89,19 @@ app.route('/spanishHelp')
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
+      const config = getModelConfig(model);
+      const instructions = config.systemInstruction.spanishLearner;
+
       const chat = ai.chats.create({
-        model: MODEL,
+        model: config.model,
         config: {
-          systemInstruction: systemInstruction.spanishLearner,
-          ...generationConfig,
+          systemInstruction: instructions,
+          ...config.generationConfig,
         },
         history: [
           {
             role: "user",
-            parts: [{ text: systemInstruction.spanishLearner }]
+            parts: [{ text: instructions }]
           }
         ]
       });
@@ -121,7 +142,7 @@ app.route('/englishHelp')
       return res.status(200).json({});
     }
 
-    const { text } = req.body;
+    const { text, model = 'complete' } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
@@ -132,16 +153,19 @@ app.route('/englishHelp')
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
+      const config = getModelConfig(model);
+      const instructions = config.systemInstruction.englishLearner;
+
       const chat = ai.chats.create({
-        model: MODEL,
+        model: config.model,
         config: {
-          systemInstruction: systemInstruction.englishLearner,
-          ...generationConfig,
+          systemInstruction: instructions,
+          ...config.generationConfig,
         },
         history: [
           {
             role: "user",
-            parts: [{ text: systemInstruction.englishLearner }]
+            parts: [{ text: instructions }]
           }
         ]
       });
