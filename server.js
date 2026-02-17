@@ -46,7 +46,7 @@ const getModelConfig = (modelType) => {
       maxOutputTokens: 8192,
       responseMimeType: "text/plain",
       thinkingConfig: {
-        thinkingBudget: 2048,
+        thinkingBudget: 1024,
       },
       responseModalities: ["TEXT"], // Ensure text output
     }
