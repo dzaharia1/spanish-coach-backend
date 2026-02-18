@@ -37,17 +37,14 @@ const getModelConfig = (modelType) => {
   }
   // Default to complete
   return {
-    model: "gemini-3-pro-preview",
+    model: "gemini-flash-latest",
     systemInstruction: completeInstructions,
     generationConfig: {
-      temperature: 1,
+      temperature: 0.7,
       topP: 0.95,
       topK: 40,
       maxOutputTokens: 8192,
       responseMimeType: "text/plain",
-      thinkingConfig: {
-        thinkingBudget: 1024,
-      },
       responseModalities: ["TEXT"], // Ensure text output
     }
   };
@@ -98,12 +95,7 @@ app.route('/spanishHelp')
           systemInstruction: instructions,
           ...config.generationConfig,
         },
-        history: [
-          {
-            role: "user",
-            parts: [{ text: instructions }]
-          }
-        ]
+        history: []
       });
 
       const response = await chat.sendMessageStream({ message: `"${text}"` });
@@ -162,12 +154,7 @@ app.route('/englishHelp')
           systemInstruction: instructions,
           ...config.generationConfig,
         },
-        history: [
-          {
-            role: "user",
-            parts: [{ text: instructions }]
-          }
-        ]
+        history: []
       });
 
       const response = await chat.sendMessageStream({ message: `"${text}"` });
