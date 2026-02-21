@@ -32,6 +32,9 @@ const getModelConfig = (modelType) => {
         topK: 40,
         maxOutputTokens: 8192,
         responseMimeType: "text/plain",
+        thinkingConfig: {
+          thinkingBudget: 0
+        }
       }
     };
   }
@@ -46,6 +49,9 @@ const getModelConfig = (modelType) => {
       maxOutputTokens: 8192,
       responseMimeType: "text/plain",
       responseModalities: ["TEXT"], // Ensure text output
+      thinkingConfig: {
+        thinkingBudget: 0
+      }
     }
   };
 };
