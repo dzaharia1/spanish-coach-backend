@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "deploy": "git push origin main && sleep 6 && gh run watch $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')"
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
