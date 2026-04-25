@@ -5,14 +5,16 @@ const port = require('./setup-log.json')['port'];
 const express = require('express');
 const cors = require('cors');
 const { GoogleGenAI } = require("@google/genai");
+const { admin, db } = require('./firebase');
+const { requireAuth, optionalAuth } = require('./authMiddleware');
 
 const app = express();
 
 // Middleware
 app.use(cors({
   origin: process.env.FRONTEND_DOMAINS ? process.env.FRONTEND_DOMAINS.split(',') : false,
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 app.use(express.json());
@@ -56,129 +58,185 @@ const getModelConfig = (modelType) => {
   };
 };
 
+async function saveTranslation({ uid, languageMode, model, inputText, outputText }) {
+  if (!uid || !outputText) return;
+  try {
+    await db
+      .collection('users')
+      .doc(uid)
+      .collection('translations')
+      .add({
+        languageMode,
+        model,
+        inputText,
+        outputText,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+  } catch (err) {
+    console.error('Failed to save translation:', err);
+  }
+}
+
+async function streamCoaching(req, res, instructionsKey) {
+  const { text, model = 'complete' } = req.body;
+
+  if (!text) {
+    return res.status(400).json({ error: 'Text is required' });
+  }
+
+  try {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const config = getModelConfig(model);
+    const instructions = config.systemInstruction[instructionsKey];
+
+    const chat = ai.chats.create({
+      model: config.model,
+      config: {
+        systemInstruction: instructions,
+        ...config.generationConfig,
+      },
+      history: []
+    });
+
+    const response = await chat.sendMessageStream({ message: `"${text}"` });
+
+    let fullOutput = '';
+    for await (const chunk of response) {
+      const chunkText = chunk.text;
+      if (chunkText) {
+        fullOutput += chunkText;
+        res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+      }
+    }
+
+    res.end();
+
+    if (req.user && fullOutput) {
+      await saveTranslation({
+        uid: req.user.uid,
+        languageMode: instructionsKey === 'spanishLearner' ? 'spanishHelp' : 'englishHelp',
+        model,
+        inputText: text,
+        outputText: fullOutput,
+      });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.end();
+  }
+}
+
 app.get('/', (req, res) => {
   res.send('Hello World');
 });
 
-// Remove the app.all middleware and modify the translate route
 app.route('/spanishHelp')
   .get((req, res) => {
-    console.log('GET request received when POST expected');
     res.status(405).json({ error: 'Method not allowed. Please use POST.' });
   })
-  .post(async (req, res) => {
-    console.log('Received POST request to /translate');
-    console.log('Request body:', req.body);
-    console.log('Request method:', req.method);
-    console.log('Request headers:', req.headers);
-
-    // Add OPTIONS handling for preflight requests
-    if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Origin', '*');
-      res.header('Access-Control-Allow-Methods', 'POST');
-      res.header('Access-Control-Allow-Headers', 'Content-Type');
-      return res.status(200).json({});
-    }
-
-    const { text, model = 'complete' } = req.body;
-
-    if (!text) {
-      return res.status(400).json({ error: 'Text is required' });
-    }
-
-    try {
-      // Set up SSE
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-
-      const config = getModelConfig(model);
-      const instructions = config.systemInstruction.spanishLearner;
-
-      const chat = ai.chats.create({
-        model: config.model,
-        config: {
-          systemInstruction: instructions,
-          ...config.generationConfig,
-        },
-        history: []
-      });
-
-      const response = await chat.sendMessageStream({ message: `"${text}"` });
-
-      // Stream each chunk as it arrives
-      for await (const chunk of response) {
-        const chunkText = chunk.text;
-        if (chunkText) {
-          res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
-        }
-      }
-
-      res.end();
-    } catch (error) {
-      console.error('Error:', error);
-      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-      res.end();
-    }
-  });
+  .post(optionalAuth, (req, res) => streamCoaching(req, res, 'spanishLearner'));
 
 app.route('/englishHelp')
   .get((req, res) => {
-    console.log('GET request received when POST expected');
     res.status(405).json({ error: 'Method not allowed. Please use POST.' });
   })
-  .post(async (req, res) => {
-    console.log('Received POST request to /englishHelp');
-    console.log('Request body:', req.body);
-    console.log('Request method:', req.method);
-    console.log('Request headers:', req.headers);
+  .post(optionalAuth, (req, res) => streamCoaching(req, res, 'englishLearner'));
 
-    if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Origin', '*');
-      res.header('Access-Control-Allow-Methods', 'POST');
-      res.header('Access-Control-Allow-Headers', 'Content-Type');
-      return res.status(200).json({});
-    }
+// History endpoints — all require auth
 
-    const { text, model = 'complete' } = req.body;
+app.get('/history', requireAuth, async (req, res) => {
+  try {
+    const search = (req.query.search || '').toString().trim().toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
 
-    if (!text) {
-      return res.status(400).json({ error: 'Text is required' });
-    }
+    const snapshot = await db
+      .collection('users')
+      .doc(req.user.uid)
+      .collection('translations')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
 
-    try {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
+    let items = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      const createdAt = data.createdAt?.toDate?.() || null;
+      return {
+        id: doc.id,
+        languageMode: data.languageMode,
+        model: data.model,
+        inputText: data.inputText,
+        outputText: data.outputText,
+        createdAt: createdAt ? createdAt.toISOString() : null,
+      };
+    });
 
-      const config = getModelConfig(model);
-      const instructions = config.systemInstruction.englishLearner;
-
-      const chat = ai.chats.create({
-        model: config.model,
-        config: {
-          systemInstruction: instructions,
-          ...config.generationConfig,
-        },
-        history: []
+    if (search) {
+      items = items.filter((t) => {
+        const haystack = `${t.inputText || ''}\n${t.outputText || ''}`.toLowerCase();
+        return haystack.includes(search);
       });
-
-      const response = await chat.sendMessageStream({ message: `"${text}"` });
-
-      for await (const chunk of response) {
-        const chunkText = chunk.text;
-        if (chunkText) {
-          res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
-        }
-      }
-
-      res.end();
-    } catch (error) {
-      console.error('Error:', error);
-      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-      res.end();
     }
-  });
+
+    res.json({ items });
+  } catch (err) {
+    console.error('Error listing history:', err);
+    res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
+app.get('/history/:id', requireAuth, async (req, res) => {
+  try {
+    const doc = await db
+      .collection('users')
+      .doc(req.user.uid)
+      .collection('translations')
+      .doc(req.params.id)
+      .get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Translation not found' });
+    }
+
+    const data = doc.data();
+    const createdAt = data.createdAt?.toDate?.() || null;
+    res.json({
+      id: doc.id,
+      languageMode: data.languageMode,
+      model: data.model,
+      inputText: data.inputText,
+      outputText: data.outputText,
+      createdAt: createdAt ? createdAt.toISOString() : null,
+    });
+  } catch (err) {
+    console.error('Error fetching translation:', err);
+    res.status(500).json({ error: 'Failed to fetch translation' });
+  }
+});
+
+app.delete('/history/:id', requireAuth, async (req, res) => {
+  try {
+    const ref = db
+      .collection('users')
+      .doc(req.user.uid)
+      .collection('translations')
+      .doc(req.params.id);
+
+    const doc = await ref.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Translation not found' });
+    }
+
+    await ref.delete();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error deleting translation:', err);
+    res.status(500).json({ error: 'Failed to delete translation' });
+  }
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -187,4 +245,4 @@ app.get('/health', (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
-}); 
+});
