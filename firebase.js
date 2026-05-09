@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const fs = require('fs');
 
 let initialized = false;
 
@@ -6,18 +7,16 @@ function init() {
   if (initialized) return;
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT;
 
-  if (serviceAccountJson) {
+  if (serviceAccountPath) {
     let credentials;
     try {
-      const raw = serviceAccountJson.trim().startsWith('{')
-        ? serviceAccountJson
-        : Buffer.from(serviceAccountJson, 'base64').toString('utf8');
+      const raw = fs.readFileSync(serviceAccountPath, 'utf8');
       credentials = JSON.parse(raw);
     } catch (err) {
       throw new Error(
-        `FIREBASE_SERVICE_ACCOUNT could not be parsed as JSON or base64-encoded JSON: ${err.message}`
+        `FIREBASE_SERVICE_ACCOUNT file could not be read or parsed as JSON: ${err.message}`
       );
     }
     admin.initializeApp({
