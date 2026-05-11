@@ -7,6 +7,7 @@ const cors = require('cors');
 const { GoogleGenAI } = require("@google/genai");
 const { admin, db } = require('./firebase');
 const { requireAuth, optionalAuth } = require('./authMiddleware');
+const { verifyRecaptcha } = require('./recaptcha');
 
 const app = express();
 
@@ -78,10 +79,16 @@ async function saveTranslation({ uid, languageMode, model, inputText, outputText
 }
 
 async function streamCoaching(req, res, instructionsKey) {
-  const { text, model = 'complete' } = req.body;
+  const { text, model = 'complete', recaptchaToken } = req.body;
 
   if (!text) {
     return res.status(400).json({ error: 'Text is required' });
+  }
+
+  // Verify reCAPTCHA
+  const recaptcha = await verifyRecaptcha(recaptchaToken, 'TRANSLATE');
+  if (!recaptcha.success || (recaptcha.score < 0.5)) {
+    return res.status(403).json({ error: 'Security check failed. Please try again.' });
   }
 
   try {
