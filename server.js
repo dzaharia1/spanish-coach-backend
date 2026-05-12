@@ -153,6 +153,13 @@ app.route('/englishHelp')
   })
   .post(optionalAuth, (req, res) => streamCoaching(req, res, 'englishLearner'));
 
+// Audit reCAPTCHA token for login/logout events
+app.post('/audit', async (req, res) => {
+  const { token, action } = req.body;
+  const recaptcha = await verifyRecaptcha(token, action || 'LOGIN');
+  res.json({ success: recaptcha.success, score: recaptcha.score });
+});
+
 // History endpoints — all require auth
 
 app.get('/history', requireAuth, async (req, res) => {
