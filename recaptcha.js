@@ -7,7 +7,7 @@ async function verifyRecaptcha(token, expectedAction = 'LOGIN') {
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
-  const apiKey = process.env.RECAPTCHA_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.RECAPTCHA_API_KEY;
   const siteKey = process.env.RECAPTCHA_SITE_KEY;
 
   try {
