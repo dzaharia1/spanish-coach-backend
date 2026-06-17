@@ -6,7 +6,7 @@ async function verifyRecaptcha(token, expectedAction = 'LOGIN') {
     return { success: false, score: 0 };
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
   const apiKey = process.env.RECAPTCHA_API_KEY;
   const siteKey = process.env.RECAPTCHA_SITE_KEY;
 
