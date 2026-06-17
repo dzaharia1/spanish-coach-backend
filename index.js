@@ -10,4 +10,10 @@ const app = require('./server');
 const root = express();
 root.use('/api', app);
 
-exports.api = onRequest({ region: 'us-central1', timeoutSeconds: 120 }, root);
+// invoker: 'public' keeps the underlying Cloud Run service callable by
+// unauthenticated requests (Firebase Hosting forwards the /api/** rewrite
+// anonymously), so redeploys don't drop the allUsers invoker binding.
+exports.api = onRequest(
+  { region: 'us-central1', timeoutSeconds: 120, invoker: 'public' },
+  root
+);
