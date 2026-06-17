@@ -23,11 +23,13 @@ jobs:
 
       - name: Write functions runtime env
         run: |
+          # Note: Functions v2 forbids .env keys with reserved prefixes
+          # (X_GOOGLE_/FIREBASE_/EXT_). The project ID is available at runtime
+          # via GCLOUD_PROJECT, which recaptcha.js and firebase-admin use.
           cat > .env <<EOF
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           RECAPTCHA_API_KEY=${{ secrets.RECAPTCHA_API_KEY }}
           RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }}
-          FIREBASE_PROJECT_ID=spanish-coach-f023c
           EOF
 
       - name: Install Firebase CLI
