@@ -35,8 +35,10 @@ const getModelConfig = (modelType) => {
         topK: 40,
         maxOutputTokens: 8192,
         responseMimeType: "text/plain",
+        // Gemini 3.x models use thinkingLevel (not thinkingBudget). "low"
+        // keeps latency down while staying compatible with the current model.
         thinkingConfig: {
-          thinkingBudget: 0
+          thinkingLevel: "low"
         }
       }
     };
@@ -51,9 +53,10 @@ const getModelConfig = (modelType) => {
       topK: 40,
       maxOutputTokens: 8192,
       responseMimeType: "text/plain",
-      responseModalities: ["TEXT"], // Ensure text output
+      // Gemini 3.x models use thinkingLevel (not thinkingBudget). "low"
+      // keeps latency down while staying compatible with the current model.
       thinkingConfig: {
-        thinkingBudget: 0
+        thinkingLevel: "low"
       }
     }
   };
