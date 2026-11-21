@@ -4,7 +4,7 @@
   "description": "Backend for Spanish language learning app using Gemini API",
   "main": "index.js",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "scripts": {
     "start": "node server.js",
