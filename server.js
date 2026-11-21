@@ -24,43 +24,20 @@ app.use(express.json());
 const apiKey = process.env.GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey });
 
-const getModelConfig = (modelType) => {
-  if (modelType === 'concise') {
-    return {
-      model: "gemini-flash-latest",
-      systemInstruction: conciseInstructions,
-      generationConfig: {
-        temperature: 1,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
-        responseMimeType: "text/plain",
-        // Gemini 3.x models use thinkingLevel (not thinkingBudget). "low"
-        // keeps latency down while staying compatible with the current model.
-        thinkingConfig: {
-          thinkingLevel: "low"
-        }
-      }
-    };
-  }
-  // Default to complete
-  return {
-    model: "gemini-flash-latest",
-    systemInstruction: completeInstructions,
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.95,
-      topK: 40,
-      maxOutputTokens: 8192,
-      responseMimeType: "text/plain",
-      // Gemini 3.x models use thinkingLevel (not thinkingBudget). "low"
-      // keeps latency down while staying compatible with the current model.
-      thinkingConfig: {
-        thinkingLevel: "low"
-      }
+const getModelConfig = (modelType) => ({
+  model: "gemini-4-hydrogen",
+  systemInstruction: modelType === 'concise' ? conciseInstructions : completeInstructions,
+  generationConfig: {
+    // Gemini 4 models count thinking tokens toward maxOutputTokens.
+    maxOutputTokens: 32768,
+    responseMimeType: "text/plain",
+    // Gemini 4 Hydrogen defaults to "high" thinking and rejects "minimal".
+    // "low" keeps latency down for interactive coaching.
+    thinkingConfig: {
+      thinkingLevel: "low"
     }
-  };
-};
+  }
+});
 
 async function saveTranslation({ uid, languageMode, model, inputText, outputText }) {
   if (!uid || !outputText) return;

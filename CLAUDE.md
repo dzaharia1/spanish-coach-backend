@@ -144,17 +144,15 @@ const response = await chat.sendMessageStream({ message: `"${text}"` });
 
 User text is always wrapped in quotes when sent to the model: `` `"${text}"` ``
 
-### Model Configuration (`getModelConfig` in `server.js:24`)
+### Model Configuration (`getModelConfig` in `server.js:27`)
 
-Both modes use `gemini-flash-latest` with `thinkingBudget: 0` (thinking disabled for speed).
+Both modes use `gemini-4-hydrogen` with `thinkingLevel: "low"` (Hydrogen defaults to `"high"` and rejects `"minimal"`). Sampling parameters (`temperature`, `topP`, `topK`) are omitted because they are deprecated in Gemini 3.6+/4 models.
 
 | Setting             | `complete` mode | `concise` mode |
 |---------------------|-----------------|----------------|
-| `temperature`       | 0.7             | 1.0            |
-| `topP`              | 0.95            | 0.95           |
-| `topK`              | 40              | 40             |
-| `maxOutputTokens`   | 8192            | 8192           |
-| `thinkingBudget`    | 0               | 0              |
+| `model`             | `gemini-4-hydrogen` | `gemini-4-hydrogen` |
+| `maxOutputTokens`   | 32768           | 32768          |
+| `thinkingLevel`     | `"low"`         | `"low"`        |
 
 ## System Instructions (`systeminstructions.js`)
 
